@@ -1,0 +1,50 @@
+name: Build and Release All Versions
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'   # Runs on version tag push like v1.0.0
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setup MSBuild for .NET Framework builds
+        uses: microsoft/setup-msbuild@v1.3.1
+
+      - name: Setup .NET 8 SDK
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '8.0.x'
+
+      # ---- .NET Framework 4.7.2 ----
+      - name: Build .NET 4.7.2 App
+        run: |
+          msbuild ./AnyTerminalApp.Net472/AnyTerminalApp.Net472.csproj /p:Configuration=Release
+          Compress-Archive -Path ./AnyTerminalApp.Net472/bin/Release/* -DestinationPath AnyTerminal472.zip
+
+      # ---- .NET Framework 4.8 ----
+      - name: Build .NET 4.8 App
+        run: |
+          msbuild ./AnyTerminalApp.Net48/AnyTerminalApp.Net48.csproj /p:Configuration=Release
+          Compress-Archive -Path ./AnyTerminalApp.Net48/bin/Release/* -DestinationPath AnyTerminal48.zip
+
+      # ---- .NET 8.0 ----
+      - name: Build .NET 8 App
+        run: |
+          dotnet publish ./AnyTerminalApp.Net8/AnyTerminalApp.Net8.csproj -c Release -o ./publish80
+          Compress-Archive -Path ./publish80/* -DestinationPath AnyTerminal80.zip
+
+      # ---- Create GitHub Release with Assets ----
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            AnyTerminal472.zip
+            AnyTerminal48.zip
+            AnyTerminal80.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
